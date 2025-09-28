@@ -11,9 +11,7 @@ import matplotlib.pyplot as plt
 import requests
 
 
-base_dir = Path(__file__).resolve().parent
-st.write("DEBUG: app folder:", str(base_dir))
-st.write("DEBUG: csv files:", [p.name for p in base_dir.glob("hedge_log_*.csv")])
+
 
 # --- Securely obtain API key (prefer st.secrets on Cloud, then env var, then .env file) ---
 def _load_api_key():
@@ -172,13 +170,7 @@ with st.sidebar:
 
 # --- Main app flow ---
 log = load_hedge_log_for_pair(base_currency, quote_currency)
-if log.empty:
-    st.warning(
-        f"No hedge log found for {selected_pair}. Expected file: "
-        f"hedge_log_{base_currency.lower()}{quote_currency.lower()}.csv"
-    )
-    st.info("Create the hedge log CSV in the app folder or switch to a pair with an existing log.")
-    st.stop()
+
 
 log.columns = log.columns.str.strip().str.replace(" ", "_")
 st.subheader("🔮 Latest Hedge Decision")
