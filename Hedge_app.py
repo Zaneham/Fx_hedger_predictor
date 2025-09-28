@@ -97,65 +97,12 @@ def get_live_rate(base="NZD", quote="USD"):
 
 def load_hedge_log_for_pair(base, quote):
     filename = f"hedge_log_{base.lower()}{quote.lower()}.csv"
-    base_dir = Path(__file__).resolve().parent
-    path = base_dir / filename
+    path = Path(__file__).resolve().parent / filename
 
-    st.write("DEBUG: trying to load:", str(path))
-    if not path.exists():
-        st.write(f"DEBUG: file not found: {filename}")
-        return pd.DataFrame()
+    df = pd.read_csv(path, encoding="utf-8")
+    df.columns = df.columns.str.strip().str.replace(" ", "_")
+    return df
 
-    try:
-        stat = path.stat()
-        st.write("DEBUG: file size (bytes):", stat.st_size)
-    except Exception as e:
-        st.write("DEBUG: stat error:", e)
-
-    try:
-        raw = "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[:10])
-        st.code(raw, language="text")
-    except Exception as e:
-        st.write("DEBUG: raw read error:", e)
-
-    try:
-        df = pd.read_csv(path)
-        if df.shape[0] == 0 and df.shape[1] > 1:
-            df = pd.read_csv(path, header=None)
-            df.columns = [f"col_{i}" for i in range(df.shape[1])]
-        df.columns = df.columns.str.strip().str.replace(" ", "_")
-        st.write("DEBUG: pd.read_csv shape:", df.shape)
-        st.write("DEBUG: columns:", df.columns.tolist())
-        st.dataframe(df.head(5), use_container_width=True)
-        return df
-    except Exception as e:
-        st.write("DEBUG: pd.read_csv failed:", e)
-
-    for enc in ("utf-8-sig", "latin1"):
-        try:
-            df = pd.read_csv(path, encoding=enc)
-            df.columns = df.columns.str.strip().str.replace(" ", "_")
-            st.write(f"DEBUG: read with encoding={enc}; shape:", df.shape)
-            st.dataframe(df.head(5), use_container_width=True)
-            return df
-        except Exception as e:
-            st.write(f"DEBUG: encoding={enc} failed:", e)
-
-    try:
-        import csv
-        sample = path.read_text(encoding="utf-8", errors="replace").splitlines()[:5]
-        sniff = csv.Sniffer()
-        delimiter = sniff.sniff("\n".join(sample)).delimiter
-        st.write("DEBUG: sniffed delimiter:", delimiter)
-        df = pd.read_csv(path, sep=delimiter, encoding="utf-8", engine="python")
-        df.columns = df.columns.str.strip().str.replace(" ", "_")
-        st.write("DEBUG: read with sniffed delimiter; shape:", df.shape)
-        st.dataframe(df.head(5), use_container_width=True)
-        return df
-    except Exception as e:
-        st.write("DEBUG: delimiter-sniff read failed:", e)
-
-    st.write("DEBUG: returning empty DataFrame")
-    return pd.DataFrame()
 # --- Sidebar controls ---
 with st.sidebar:
     st.markdown("## How It Works")
