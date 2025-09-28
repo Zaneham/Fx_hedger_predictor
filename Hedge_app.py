@@ -104,60 +104,60 @@ def load_hedge_log_for_pair(base, quote):
 
     st.write("DEBUG: trying to load:", str(path))
     if not path.exists():
-        st.error(f"DEBUG: file not found: {filename} (looked in {base_dir})")
+        st.write(f"DEBUG: file not found: {filename}")
         return pd.DataFrame()
 
-    # file metadata
     try:
         stat = path.stat()
         st.write("DEBUG: file size (bytes):", stat.st_size)
     except Exception as e:
         st.write("DEBUG: stat error:", e)
 
-    # raw preview (first 5 lines) to catch encoding/delimiter/header problems
     try:
         raw = "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[:10])
         st.code(raw, language="text")
     except Exception as e:
         st.write("DEBUG: raw read error:", e)
 
-    # try reading with a few defensive options
     try:
         df = pd.read_csv(path)
+        if df.shape[0] == 0 and df.shape[1] > 1:
+            df = pd.read_csv(path, header=None)
+            df.columns = [f"col_{i}" for i in range(df.shape[1])]
+        df.columns = df.columns.str.strip().str.replace(" ", "_")
         st.write("DEBUG: pd.read_csv shape:", df.shape)
         st.write("DEBUG: columns:", df.columns.tolist())
         st.dataframe(df.head(5), use_container_width=True)
         return df
     except Exception as e:
-        st.write("DEBUG: pd.read_csv default failed:", e)
+        st.write("DEBUG: pd.read_csv failed:", e)
 
-    # fallback reads
     for enc in ("utf-8-sig", "latin1"):
         try:
             df = pd.read_csv(path, encoding=enc)
-            st.write(f"DEBUG: pd.read_csv succeeded with encoding={enc}; shape:", df.shape)
+            df.columns = df.columns.str.strip().str.replace(" ", "_")
+            st.write(f"DEBUG: read with encoding={enc}; shape:", df.shape)
             st.dataframe(df.head(5), use_container_width=True)
             return df
         except Exception as e:
-            st.write(f"DEBUG: pd.read_csv with encoding={enc} failed:", e)
+            st.write(f"DEBUG: encoding={enc} failed:", e)
 
-    # try reading with flexible delimiter detection
     try:
-        import csv, io
+        import csv
         sample = path.read_text(encoding="utf-8", errors="replace").splitlines()[:5]
         sniff = csv.Sniffer()
         delimiter = sniff.sniff("\n".join(sample)).delimiter
         st.write("DEBUG: sniffed delimiter:", delimiter)
         df = pd.read_csv(path, sep=delimiter, encoding="utf-8", engine="python")
-        st.write("DEBUG: read with sniffed delimiter shape:", df.shape)
+        df.columns = df.columns.str.strip().str.replace(" ", "_")
+        st.write("DEBUG: read with sniffed delimiter; shape:", df.shape)
         st.dataframe(df.head(5), use_container_width=True)
         return df
     except Exception as e:
         st.write("DEBUG: delimiter-sniff read failed:", e)
 
-    st.error("DEBUG: unable to parse CSV; returning empty DataFrame")
+    st.write("DEBUG: returning empty DataFrame")
     return pd.DataFrame()
-
 # --- Sidebar controls ---
 with st.sidebar:
     st.markdown("## How It Works")
