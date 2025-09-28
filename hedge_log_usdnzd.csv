@@ -1,1 +1,2 @@
-2025-09-28 22:56:21,1.733402669440111,1.7425319441416178,Wait,0.002272,0.000608,4.15%
+Timestamp,Live_Rate,Predicted_Rate,Decision,RMSE,MAE,Directional_accuracy,Actual,Error,CorrectDirection,HedgeOutcome,Notes:
+28/09/2025 22:56,1.733402669,1.742531944,Wait,0.002272,0.000608,4.15%,,,,,
