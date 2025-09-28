@@ -1,0 +1,11 @@
+jb_news - This is optional you can use your own news gpt.
+matplotlib
+numpy
+pandas
+python-dotenv
+requests
+scikit-learn
+streamlit
+tensorflow
+textblob
+yfinance
