@@ -205,4 +205,4 @@ if st.button("Simulate Decision"):
         else:
             st.warning("Model is neutral — no clear signal")
 
-st.markdown("DISCLAIMER: This is not financial advice nor is it intended to be.")
+st.markdown("DISCLAIMER: This content is for informational purposes only and is not financial, investment, tax, or legal advice. You must not rely on it as a substitute for personalised advice from a licensed New Zealand financial adviser. Investing and trading carry risk including loss of capital and potential tax consequences. Past performance does not indicate future results. For guidance on regulatory matters, licensing, or investor protections consult the Financial Markets Authority or a qualified professional in New Zealand. You are solely responsible for any financial decisions and outcomes.")
