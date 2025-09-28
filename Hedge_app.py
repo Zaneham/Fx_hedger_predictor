@@ -10,39 +10,49 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 
-# preferred on Cloud
-api_key = st.secrets["FX_API_KEY"]
 
-# fallback (works locally if you exported the env var)
-api_key = os.getenv("FX_API_KEY") or st.secrets.get("FX_API_KEY")
+base_dir = Path(__file__).resolve().parent
+st.write("DEBUG: app folder:", str(base_dir))
+st.write("DEBUG: csv files:", [p.name for p in base_dir.glob("hedge_log_*.csv")])
 
+# --- Securely obtain API key (prefer st.secrets on Cloud, then env var, then .env file) ---
+def _load_api_key():
+    #We use secrets first
+    try:
+        key = st.secrets.get("FX_API_KEY")
+        if key:
+            return key
+    except Exception:
+        pass
 
-_API_KEY = None
-try:
-    _API_KEY = st.secrets.get("FX_API_KEY")
-except Exception:
-    _API_KEY = None
+   #then env 
+    key = os.getenv("FX_API_KEY")
+    if key:
+        return key
 
-if not _API_KEY:
-    # Try environment first (useful for local shell export)
-    _API_KEY = os.getenv("FX_API_KEY")
-
-if not _API_KEY:
-    # Try loading .env from app folder (optional, python-dotenv may not be installed)
+   
     env_path = Path(__file__).resolve().parent / ".env"
     if env_path.exists():
         try:
-            from dotenv import load_dotenv  # optional dependency
+            from dotenv import load_dotenv
             load_dotenv(dotenv_path=env_path, override=False)
-            _API_KEY = os.getenv("FX_API_KEY")
+            key = os.getenv("FX_API_KEY")
+            if key:
+                return key
         except Exception:
-            # tiny fallback loader if python-dotenv is not installed
+            # minimal fallback loader if python-dotenv not installed
             for line in env_path.read_text(encoding="utf-8").splitlines():
                 if not line or line.strip().startswith("#") or "=" not in line:
                     continue
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
-            _API_KEY = os.getenv("FX_API_KEY")
+            key = os.getenv("FX_API_KEY")
+            if key:
+                return key
+
+    return None
+
+_API_KEY = _load_api_key()
 
 # --- App config ---
 st.set_page_config(page_title="FX Hedging Dashboard", layout="wide")
@@ -66,11 +76,6 @@ def _call_exchangerate_host(base, quote, timeout=6):
 
 @st.cache_data(ttl=60)
 def get_live_rate(base="NZD", quote="USD"):
-    """
-    Return float rate base -> quote.
-    Tries primary exchangerate-api (requires FX_API_KEY), then fallback exchangerate.host.
-    Returns float or None.
-    """
     api_key = _get_env_key()
     if api_key:
         try:
@@ -93,10 +98,6 @@ def get_live_rate(base="NZD", quote="USD"):
     return None
 
 def load_hedge_log_for_pair(base, quote):
-    """
-    Load hedge log CSV placed in app folder.
-    Example filename: hedge_log_nzdusd.csv
-    """
     filename = f"hedge_log_{base.lower()}{quote.lower()}.csv"
     base_dir = Path(__file__).resolve().parent
     path = base_dir / filename
