@@ -10,27 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 
-# .env loader (works with or without python-dotenv)
-try:
-    from dotenv import load_dotenv  # optional dependency
-    _HAS_DOTENV = True
-except Exception:
-    _HAS_DOTENV = False
 
-ENV_PATH = Path(r"C:\Users\GGPC\OneDrive\Documents\New folder") / ".env"
-
-if ENV_PATH.exists():
-    if _HAS_DOTENV:
-        load_dotenv(dotenv_path=ENV_PATH, override=False)
-    else:
-        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
-            if not line or line.strip().startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
-else:
-    # only warn once early; replace with st.info if noisy in deploy
-    st.warning(".env not found at expected path; check path or move .env to project folder.")
 
 # Debug (temporary) — remove after confirming
 st.write("DEBUG: .env path:", str(ENV_PATH))
@@ -250,6 +230,7 @@ else:
         st.error(f"No hedge log found for {selected_pair}.")
     except Exception as e:
         st.error(f"Unexpected error loading {selected_pair}: {e}")
+
 
 
 
