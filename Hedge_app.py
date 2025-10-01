@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Sep 25 19:47:25 2025
-@author: GGPC
+@author: Zane Hambly
 """
 from pathlib import Path
 import os
@@ -116,93 +116,117 @@ with st.sidebar:
     use_sentiment = st.checkbox("Include sentiment features - To be added")
 
 # --- Main app flow ---
-log = load_hedge_log_for_pair(base_currency, quote_currency)
-
-
-log.columns = log.columns.str.strip().str.replace(" ", "_")
-st.subheader("🔮 Latest Hedge Decision")
-latest = log.iloc[-1]
-
-col1, col2, col3 = st.columns(3)
-live_rate = get_live_rate(base_currency, quote_currency)
-if live_rate is not None:
-    col1.metric(f"Live {selected_pair} Rate", f"{live_rate:.5f}")
+if selected_pair == "NZD/AUD":
+    # Coming soon landing page
+    st.subheader("🚧 NZD/AUD Coming Soon 🚧")
+    st.markdown(
+        """
+        We're currently working on adding support for the **NZD/AUD** pair.  
+        Stay tuned — live rates, hedge logs, and simulation features will be available here soon.
+        """
+    )
+    st.info("In the meantime, explore other pairs from the sidebar.")
 else:
-    col1.warning("Live rate unavailable")
+    # --- Normal flow for supported pairs ---
+    try:
+        log = load_hedge_log_for_pair(base_currency, quote_currency)
+        log.columns = log.columns.str.strip().str.replace(" ", "_")
 
-pred_val = latest.Predicted_Rate if "Predicted_Rate" in latest else None
-decision_val = latest.Decision if "Decision" in latest else None
+        st.subheader("🔮 Latest Hedge Decision")
+        latest = log.iloc[-1]
 
-col2.metric("Predicted Rate", f"{float(pred_val):.5f}" if pred_val is not None else "N/A")
-col3.metric("Decision", decision_val or "N/A")
-
-# --- Filter hedge log by decision ---
-st.subheader("🔍 Filter Hedge Log by Decision Type")
-decision_types = log.Decision.dropna().unique().tolist() if "Decision" in log.columns else []
-selected_decision = st.selectbox("Select decision type:", ["All"] + decision_types)
-
-filtered_log = log[log.Decision == selected_decision] if (selected_decision != "All" and "Decision" in log.columns) else log
-st.dataframe(filtered_log.tail(20), use_container_width=True)
-
-# --- Download button ---
-st.download_button(
-    label="📥 Download filtered hedge log",
-    data=filtered_log.to_csv(index=False),
-    file_name=f"filtered_hedge_log_{base_currency.lower()}{quote_currency.lower()}.csv",
-    mime="text/csv"
-)
-
-# --- Performance metrics ---
-st.subheader("📉 Performance Summary 📈")
-rmse = log.Error.dropna().pow(2).mean() ** 0.5 if "Error" in log.columns else float("nan")
-mae = log.Error.dropna().abs().mean() if "Error" in log.columns else float("nan")
-dir_acc = log.CorrectDirection.dropna().mean() * 100 if "CorrectDirection" in log.columns else float("nan")
-
-m1, m2, m3 = st.columns(3)
-m1.metric("RMSE", f"{rmse:.5f}")
-m2.metric("MAE", f"{mae:.5f}")
-m3.metric("Directional Accuracy", f"{dir_acc:.2f}%")
-
-# --- Outcome charts ---
-st.subheader("📊 Hedge Outcome Over Time")
-if {"Decision", "HedgeOutcome"}.issubset(log.columns):
-    outcome_by_decision = log.groupby(["Decision", "HedgeOutcome"]).size().unstack(fill_value=0)
-    st.bar_chart(outcome_by_decision)
-else:
-    st.info("Outcome breakdown not available (missing columns).")
-
-st.subheader("📊 Hedge Outcome Breakdown")
-if "HedgeOutcome" in log.columns:
-    outcome_counts = log.HedgeOutcome.value_counts()
-    st.bar_chart(outcome_counts)
-else:
-    st.info("No HedgeOutcome column in log.")
-
-# --- Prediction vs Actual chart ---
-st.subheader("📉 Predicted vs Actual Rates 📈")
-if {"Timestamp", "Live_Rate", "Predicted_Rate", "Actual"}.issubset(log.columns):
-    fig, ax = plt.subplots(figsize=(10, 4))
-    log.plot(x="Timestamp", y=["Live_Rate", "Predicted_Rate", "Actual"], ax=ax)
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
-else:
-    st.info("Prediction vs Actual chart requires columns: Timestamp, Live_Rate, Predicted_Rate, Actual.")
-
-# --- Simulator ---
-st.subheader(f"🧪 Hedge Decision Simulator for {selected_pair} 🧪")
-default_hyp = latest.Live_Rate if "Live_Rate" in latest else (live_rate or 0.0)
-hypothetical_rate = st.number_input(f"Enter hypothetical live {selected_pair} rate:", value=float(default_hyp))
-predicted_rate = float(latest.Predicted_Rate) if "Predicted_Rate" in latest else None
-
-if st.button("Simulate Decision"):
-    if predicted_rate is None:
-        st.warning("No predicted rate available in the log to run simulation.")
-    else:
-        if predicted_rate > hypothetical_rate:
-            st.success("Model would recommend: Hedge now")
-        elif predicted_rate < hypothetical_rate:
-            st.info("Model would recommend: Wait")
+        col1, col2, col3 = st.columns(3)
+        live_rate = get_live_rate(base_currency, quote_currency)
+        if live_rate is not None:
+            col1.metric(f"Live {selected_pair} Rate", f"{live_rate:.5f}")
         else:
-            st.warning("Model is neutral — no clear signal")
+            col1.warning("Live rate unavailable")
+
+        pred_val = latest.Predicted_Rate if "Predicted_Rate" in latest else None
+        decision_val = latest.Decision if "Decision" in latest else None
+
+        col2.metric("Predicted Rate", f"{float(pred_val):.5f}" if pred_val is not None else "N/A")
+        col3.metric("Decision", decision_val or "N/A")
+
+        # --- Filter hedge log by decision ---
+        st.subheader("🔍 Filter Hedge Log by Decision Type")
+        decision_types = log.Decision.dropna().unique().tolist() if "Decision" in log.columns else []
+        selected_decision = st.selectbox("Select decision type:", ["All"] + decision_types)
+
+        filtered_log = (
+            log[log.Decision == selected_decision]
+            if (selected_decision != "All" and "Decision" in log.columns)
+            else log
+        )
+        st.dataframe(filtered_log.tail(20), use_container_width=True)
+
+        # --- Download button ---
+        st.download_button(
+            label="📥 Download filtered hedge log",
+            data=filtered_log.to_csv(index=False),
+            file_name=f"filtered_hedge_log_{base_currency.lower()}{quote_currency.lower()}.csv",
+            mime="text/csv"
+        )
+
+        # --- Performance metrics ---
+        st.subheader("📉 Performance Summary 📈")
+        rmse = log.Error.dropna().pow(2).mean() ** 0.5 if "Error" in log.columns else float("nan")
+        mae = log.Error.dropna().abs().mean() if "Error" in log.columns else float("nan")
+        dir_acc = log.CorrectDirection.dropna().mean() * 100 if "CorrectDirection" in log.columns else float("nan")
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("RMSE", f"{rmse:.5f}")
+        m2.metric("MAE", f"{mae:.5f}")
+        m3.metric("Directional Accuracy", f"{dir_acc:.2f}%")
+
+        # --- Outcome charts ---
+        st.subheader("📊 Hedge Outcome Over Time")
+        if {"Decision", "HedgeOutcome"}.issubset(log.columns):
+            outcome_by_decision = log.groupby(["Decision", "HedgeOutcome"]).size().unstack(fill_value=0)
+            st.bar_chart(outcome_by_decision)
+        else:
+            st.info("Outcome breakdown not available (missing columns).")
+
+        st.subheader("📊 Hedge Outcome Breakdown")
+        if "HedgeOutcome" in log.columns:
+            outcome_counts = log.HedgeOutcome.value_counts()
+            st.bar_chart(outcome_counts)
+        else:
+            st.info("No HedgeOutcome column in log.")
+
+        # --- Prediction vs Actual chart ---
+        st.subheader("📉 Predicted vs Actual Rates 📈")
+        if {"Timestamp", "Live_Rate", "Predicted_Rate", "Actual"}.issubset(log.columns):
+            fig, ax = plt.subplots(figsize=(10, 4))
+            log.plot(x="Timestamp", y=["Live_Rate", "Predicted_Rate", "Actual"], ax=ax)
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+        else:
+            st.info("Prediction vs Actual chart requires columns: Timestamp, Live_Rate, Predicted_Rate, Actual.")
+
+        # --- Simulator ---
+        st.subheader(f"🧪 Hedge Decision Simulator for {selected_pair} 🧪")
+        default_hyp = latest.Live_Rate if "Live_Rate" in latest else (live_rate or 0.0)
+        hypothetical_rate = st.number_input(
+            f"Enter hypothetical live {selected_pair} rate:", value=float(default_hyp)
+        )
+        predicted_rate = float(latest.Predicted_Rate) if "Predicted_Rate" in latest else None
+
+        if st.button("Simulate Decision"):
+            if predicted_rate is None:
+                st.warning("No predicted rate available in the log to run simulation.")
+            else:
+                if predicted_rate > hypothetical_rate:
+                    st.success("Model would recommend: Hedge now")
+                elif predicted_rate < hypothetical_rate:
+                    st.info("Model would recommend: Wait")
+                else:
+                    st.warning("Model is neutral — no clear signal")
+
+    except FileNotFoundError:
+        st.error(f"No hedge log found for {selected_pair}.")
+    except Exception as e:
+        st.error(f"Unexpected error loading {selected_pair}: {e}")
 
 st.markdown("DISCLAIMER: This content is for informational purposes only and is not financial, investment, tax, or legal advice. You must not rely on it as a substitute for personalised advice from a licensed New Zealand financial adviser. Investing and trading carry risk including loss of capital and potential tax consequences. Past performance does not indicate future results. For guidance on regulatory matters, licensing, or investor protections consult the Financial Markets Authority or a qualified professional in New Zealand. You are solely responsible for any financial decisions and outcomes.")
+
