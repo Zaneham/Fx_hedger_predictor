@@ -10,55 +10,40 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 
+# .env loader (works with or without python-dotenv)
+try:
+    from dotenv import load_dotenv  # optional dependency
+    _HAS_DOTENV = True
+except Exception:
+    _HAS_DOTENV = False
 
+ENV_PATH = Path(r"C:\Users\GGPC\OneDrive\Documents\New folder") / ".env"
 
+if ENV_PATH.exists():
+    if _HAS_DOTENV:
+        load_dotenv(dotenv_path=ENV_PATH, override=False)
+    else:
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            if not line or line.strip().startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
+else:
+    # only warn once early; replace with st.info if noisy in deploy
+    st.warning(".env not found at expected path; check path or move .env to project folder.")
 
-# --- Securely obtain API key (prefer st.secrets on Cloud, then env var, then .env file) ---
-def _load_api_key():
-    #We use secrets first
-    try:
-        key = st.secrets.get("FX_API_KEY")
-        if key:
-            return key
-    except Exception:
-        pass
-
-   #then env 
-    key = os.getenv("FX_API_KEY")
-    if key:
-        return key
-
-   
-    env_path = Path(__file__).resolve().parent / ".env"
-    if env_path.exists():
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(dotenv_path=env_path, override=False)
-            key = os.getenv("FX_API_KEY")
-            if key:
-                return key
-        except Exception:
-            # minimal fallback loader if python-dotenv not installed
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                if not line or line.strip().startswith("#") or "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
-            key = os.getenv("FX_API_KEY")
-            if key:
-                return key
-
-    return None
-
-_API_KEY = _load_api_key()
+# Debug (temporary) — remove after confirming
+st.write("DEBUG: .env path:", str(ENV_PATH))
+st.write("DEBUG: .env exists:", ENV_PATH.exists())
+st.write("DEBUG: FX_API_KEY present after load:", bool(os.getenv("FX_API_KEY")))
 
 # --- App config ---
 st.set_page_config(page_title="FX Hedging Dashboard", layout="wide")
 st.title("📊 FX Hedging Dashboard 📊")
 
-# --- Helper functions ---
+# --- Helper functions used by get_live_rate ---
 def _get_env_key():
-    return _API_KEY
+    return os.getenv("FX_API_KEY")
 
 def _call_exchangerateapi(base, api_key, timeout=8):
     url = f"https://v6.exchangerate-api.com/v6/{api_key}/latest/{base}"
@@ -72,8 +57,14 @@ def _call_exchangerate_host(base, quote, timeout=6):
     r.raise_for_status()
     return r.json()
 
+# --- Live rate (cached) ---
 @st.cache_data(ttl=60)
 def get_live_rate(base="NZD", quote="USD"):
+    """
+    Return float rate base -> quote.
+    Tries primary exchangerate-api (requires FX_API_KEY), then fallback exchangerate.host.
+    Returns float or None.
+    """
     api_key = _get_env_key()
     if api_key:
         try:
@@ -81,34 +72,42 @@ def get_live_rate(base="NZD", quote="USD"):
             rate = data.get("conversion_rates", {}).get(quote)
             if rate is not None:
                 return float(rate)
-        except Exception:
-            # primary failed or key invalid — fall through to fallback
-            pass
+            else:
+                st.warning(f"Primary API returned no rate for {base}->{quote}.")
+        except Exception as e:
+            st.warning(f"Primary API error: {e}")
+    else:
+        st.info("FX_API_KEY not set; skipping primary provider.")
 
+    # fallback
     try:
         data2 = _call_exchangerate_host(base, quote)
         rate2 = data2.get("rates", {}).get(quote)
         if rate2 is not None:
+            st.info("Using fallback provider exchangerate.host")
             return float(rate2)
-    except Exception:
-        pass
+        else:
+            st.warning(f"Fallback provider returned no rate for {base}->{quote}.")
+    except Exception as e:
+        st.warning(f"Fallback provider error: {e}")
 
     return None
 
+# --- Hedge log loader ---
 def load_hedge_log_for_pair(base, quote):
     filename = f"hedge_log_{base.lower()}{quote.lower()}.csv"
-    path = Path(__file__).resolve().parent / filename
-
-    df = pd.read_csv(path, encoding="utf-8")
+    base_dir = os.path.dirname(__file__) if "__file__" in globals() else os.getcwd()
+    path = os.path.join(base_dir, filename)
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    df = pd.read_csv(path)
     df.columns = df.columns.str.strip().str.replace(" ", "_")
     return df
 
 # --- Sidebar controls ---
 with st.sidebar:
     st.markdown("## How It Works")
-    st.markdown(
-        "Kia ora/Hello — this app demonstrates a proof-of-concept LSTM-based FX hedging workflow."
-    )
+    st.markdown("Kia ora/Hello — this app demonstrates a proof-of-concept LSTM-based FX hedging workflow.")
     st.header("🔧 Controls")
     currency_pairs = ["NZD/USD", "USD/NZD", "AUD/NZD", "NZD/AUD"]
     selected_pair = st.selectbox("Select currency pair", currency_pairs)
@@ -116,16 +115,24 @@ with st.sidebar:
     use_sentiment = st.checkbox("Include sentiment features - To be added")
 
 # --- Main app flow ---
-if selected_pair == "NZD/AUD":
+if selected_pair == "AUD/NZD":
     # Coming soon landing page
-    st.subheader("🚧 NZD/AUD Coming Soon 🚧")
+    st.subheader("🚧 AUD/NZD Coming Soon 🚧")
     st.markdown(
         """
-        We're currently working on adding support for the **NZD/AUD** pair.  
+        G'day! We're currently working on adding support for the **AUD/NZD** pair.  
         Stay tuned — live rates, hedge logs, and simulation features will be available here soon.
         """
     )
     st.info("In the meantime, explore other pairs from the sidebar.")
+
+elif selected_pair == "NZD/AUD":
+    st.subheader("🚧NZD/AUD Coming Soon🚧")
+    st.markdown(
+        """ G'day! We're currently working on adding support for the **AUD/NZD** pair.  
+        Stay tuned — live rates, hedge logs, and simulation features will be available here soon""" 
+        )
+    st.info("While you're here, explore the other pairs from the sidebar.")
 else:
     # --- Normal flow for supported pairs ---
     try:
@@ -206,6 +213,22 @@ else:
 
         # --- Simulator ---
         st.subheader(f"🧪 Hedge Decision Simulator for {selected_pair} 🧪")
+        st.markdown(
+        """
+        💡 **What this does:**  
+        The simulator is a *what‑if sandbox*. Enter a hypothetical live rate and see how the model
+        **would have responded** — hedge now, wait, or stay neutral.  
+        It’s designed to help you understand the model’s decision logic under different scenarios.
+
+        ⚠️ **Important:**  
+        This is **not financial advice**. It’s a demonstration tool only, and should not be relied on
+        for trading or investment decisions.
+        """
+        )
+
+
+    
+
         default_hyp = latest.Live_Rate if "Live_Rate" in latest else (live_rate or 0.0)
         hypothetical_rate = st.number_input(
             f"Enter hypothetical live {selected_pair} rate:", value=float(default_hyp)
@@ -228,5 +251,5 @@ else:
     except Exception as e:
         st.error(f"Unexpected error loading {selected_pair}: {e}")
 
-st.markdown("DISCLAIMER: This content is for informational purposes only and is not financial, investment, tax, or legal advice. You must not rely on it as a substitute for personalised advice from a licensed New Zealand financial adviser. Investing and trading carry risk including loss of capital and potential tax consequences. Past performance does not indicate future results. For guidance on regulatory matters, licensing, or investor protections consult the Financial Markets Authority or a qualified professional in New Zealand. You are solely responsible for any financial decisions and outcomes.")
+
 
