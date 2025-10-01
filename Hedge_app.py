@@ -12,10 +12,6 @@ import requests
 
 
 
-# Debug (temporary) — remove after confirming
-st.write("DEBUG: .env path:", str(ENV_PATH))
-st.write("DEBUG: .env exists:", ENV_PATH.exists())
-st.write("DEBUG: FX_API_KEY present after load:", bool(os.getenv("FX_API_KEY")))
 
 # --- App config ---
 st.set_page_config(page_title="FX Hedging Dashboard", layout="wide")
@@ -230,6 +226,7 @@ else:
         st.error(f"No hedge log found for {selected_pair}.")
     except Exception as e:
         st.error(f"Unexpected error loading {selected_pair}: {e}")
+
 
 
 
