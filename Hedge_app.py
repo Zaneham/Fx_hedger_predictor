@@ -69,7 +69,7 @@ def get_live_rate(base="NZD", quote="USD"):
 
     return None
 
-# --- Hedge log loader ---
+# Hedge log loader 
 def load_hedge_log_for_pair(base, quote):
     filename = f"hedge_log_{base.lower()}{quote.lower()}.csv"
     base_dir = os.path.dirname(__file__) if "__file__" in globals() else os.getcwd()
@@ -80,7 +80,7 @@ def load_hedge_log_for_pair(base, quote):
     df.columns = df.columns.str.strip().str.replace(" ", "_")
     return df
 
-# --- Sidebar controls ---
+# Sidebar controls 
 with st.sidebar:
     st.markdown("## How It Works")
     st.markdown("Kia ora/Hello — this app demonstrates a proof-of-concept LSTM-based FX hedging workflow.")
@@ -226,6 +226,7 @@ else:
         st.error(f"No hedge log found for {selected_pair}.")
     except Exception as e:
         st.error(f"Unexpected error loading {selected_pair}: {e}")
+
 
 
 
