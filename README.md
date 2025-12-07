@@ -43,7 +43,7 @@ It focuses on:
 ---
 
 ##  Contributing
-Feedback and collaboration are welcome!  
+Feedback is welcome!  
 If you have ideas for improving the model or dashboard, feel free to open an issue or submit a pull request.  
 
 ---
