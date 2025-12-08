@@ -48,6 +48,3 @@ If you have ideas for improving the model or dashboard, feel free to open an iss
 
 ---
 
-##  Contact
-- **GitHub**: [Zaneham](https://github.com/Zaneham)  
-- **LinkedIn**: [Zane Hambly](https://www.linkedin.com/in/zane-hambly-11a69b166/)  
